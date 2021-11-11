@@ -10,17 +10,17 @@ import org.apache.log4j.Logger;
 
 /**
  * Data representing a noise model for station data. These are expected to be a CSV with
- * each line having a period value, mean noise value, median noise value, 10th percentile value, and
- * 90th percentile value.
+ * each line having a period value (required), mean noise value (required),
+ * median noise value, 10th percentile value, and 90th percentile value (all optional).
  */
 public class NoiseModel {
 
-  public double[] periods;
-  public double[] meanLevels;
-  public double[] medianLevels;
-  public double[] percentile10;
-  public double[] percentile90;
-  public String name;
+  public final double[] periods;
+  public final double[] meanLevels;
+  public final double[] medianLevels;
+  public final double[] percentile10;
+  public final double[] percentile90;
+  public final String name;
 
   Logger logger = Logger.getLogger(NoiseModel.class);
 
