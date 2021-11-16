@@ -14,9 +14,11 @@ import asl.utils.timeseries.TimeSeriesUtils;
 import edu.iris.dmc.seedcodec.CodecException;
 import edu.sc.seis.seisFile.mseed.SeedFormatException;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Random;
+import org.apache.commons.math3.util.Pair;
 import org.junit.Test;
 
 public class AzimuthExperimentTest {
@@ -174,12 +176,11 @@ public class AzimuthExperimentTest {
     }
 
     AzimuthExperiment azi = new AzimuthExperiment();
-
     assertTrue(azi.hasEnoughData(ds));
 
     azi.runExperimentOnData(ds);
     assertEquals(15.0, azi.getFitAngle(), 1.);
-    assertEquals(0.4, azi.getUncertainty(), 0.5);
+    assertEquals(0.5, azi.getUncertainty(), 0.2);
 
   }
 
@@ -379,8 +380,10 @@ public class AzimuthExperimentTest {
 
     String angle = Experiment.DECIMAL_FORMAT.get().format(azi.getFitAngle());
     String angleEast = Experiment.DECIMAL_FORMAT.get().format(azi.getFitAngle() + 90);
-    String expected1 = "N FIT ANGLE: " + angle + " (+/- 0.004)";
-    String expected2 = "E FIT ANGLE: " + angleEast + " (+/- 0.004)";
+    // unfortunately string comparison isn't as flexible as double comparisons so changes to
+    // azimuth logic are very likely to break the assumptions in this test
+    String expected1 = "N FIT ANGLE: " + angle + " (+/- 0.224)";
+    String expected2 = "E FIT ANGLE: " + angleEast + " (+/- 0.224)";
     String expected3 = "Data start time:\n2017.177.12:00:00.069";
     String expected4 = "Data end time:\n2017.177.14:00:00.069\n";
     assertArrayEquals(new String[]{expected1, expected2}, azi.getDataStrings());
@@ -409,8 +412,12 @@ public class AzimuthExperimentTest {
       AzimuthExperiment az = new AzimuthExperiment();
       az.runExperimentOnData(ds);
 
-      assertEquals(3.2, az.getFitAngle(), 0.5);
-      assertEquals(0.5, az.getUncertainty(), 0.5);
+      double fit = az.getFitAngle();
+      while (fit > 180) {
+        fit -= 360;
+      }
+      assertEquals(3.1, fit, az.getUncertainty());
+      assertEquals(0.1959, az.getUncertainty(), 0.5);
 
     } catch (SeedFormatException | CodecException | IOException e) {
       e.printStackTrace();
@@ -473,7 +480,13 @@ public class AzimuthExperimentTest {
       AzimuthExperiment az = new AzimuthExperiment();
       az.setSimple(true);
       az.runExperimentOnData(ds);
-      assertEquals(3.4, az.getFitAngle(), 0.5);
+
+      double fit = az.getFitAngle();
+      while (fit > 180) {
+        fit -= 360;
+      }
+      // no uncertainty in this measurement so we'll use our own tolerance
+      assertEquals(3.194, fit, 1E-3);
 
     } catch (SeedFormatException | CodecException | IOException e) {
       e.printStackTrace();
@@ -485,10 +498,15 @@ public class AzimuthExperimentTest {
   public void alternateEntryPoint_testInitializationUnchanged_DefaultFalseSimpleCalc() {
     double[] north = new double[10000];
     Arrays.fill(north, 1);
+    // this operation on the first point is to prevent everything getting mean-removed to 0
+    // (seeing constant results on real-world data is a sign of a physical hardware failure)
+    north[0] /= 2.;
     double[] east = new double[10000];
     Arrays.fill(east, 2);
+    east[0] /= 2.;
     double[] referenceNorth = new double[10000];
     Arrays.fill(referenceNorth, 1);
+    referenceNorth[0] /= 2.;
     long interval = 1;
     long start = 0;
     long end = 9;
@@ -507,10 +525,13 @@ public class AzimuthExperimentTest {
   public void alternateEntryPoint_testInitializationUnchangedTrue() {
     double[] north = new double[10000];
     Arrays.fill(north, 1);
+    north[0] /= 2.;
     double[] east = new double[10000];
     Arrays.fill(east, 2);
+    east[0] /= 2.;
     double[] referenceNorth = new double[10000];
     Arrays.fill(referenceNorth, 1);
+    referenceNorth[0] /= 2.;
     long interval = 1;
     long start = 0;
     long end = 9;
@@ -543,9 +564,9 @@ public class AzimuthExperimentTest {
     long start = 0;
     long end = 10000;
     assertEquals(
-        4.71250648,
+        4.713,
         AzimuthExperiment.getAzimuth(north, east, referenceNorth, interval, start, end),
-        10E-7);
+        1E-3);
   }
 
   @Test

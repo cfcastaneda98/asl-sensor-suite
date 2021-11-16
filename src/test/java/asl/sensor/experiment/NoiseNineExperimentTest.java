@@ -71,9 +71,6 @@ public class NoiseNineExperimentTest {
     assertTrue(nne.hasEnoughData(ds));
     nne.runExperimentOnData(ds);
 
-    assertArrayEquals(new double[]{0., NORTH_ANGLE_1, NORTH_ANGLE_2}, nne.getNorthAnglesDegrees(), 0.1);
-    assertArrayEquals(new double[]{0., EAST_ANGLE_1, EAST_ANGLE_2}, nne.getEastAnglesDegrees(), 0.1);
-
     int minPeriod = 3;
     int maxPeriod = 9;
 
@@ -181,9 +178,6 @@ public class NoiseNineExperimentTest {
     assertTrue(nne.hasEnoughData(ds));
     nne.runExperimentOnData(ds);
 
-    assertArrayEquals(new double[]{NORTH_ANGLE_1, 0., NORTH_ANGLE_2}, nne.getNorthAnglesDegrees(), 0.1);
-    assertArrayEquals(new double[]{EAST_ANGLE_1, 0., EAST_ANGLE_2}, nne.getEastAnglesDegrees(), 0.1);
-
     int minPeriod = 3;
     int maxPeriod = 9;
 
@@ -255,9 +249,6 @@ public class NoiseNineExperimentTest {
     nne.setThirdDataAsAngleReference();
     assertTrue(nne.hasEnoughData(ds));
     nne.runExperimentOnData(ds);
-
-    assertArrayEquals(new double[]{NORTH_ANGLE_1, NORTH_ANGLE_2, 0.}, nne.getNorthAnglesDegrees(), 0.1);
-    assertArrayEquals(new double[]{EAST_ANGLE_1, EAST_ANGLE_2, 0.}, nne.getEastAnglesDegrees(), 0.1);
 
     int minPeriod = 3;
     int maxPeriod = 9;

@@ -83,6 +83,8 @@ public class AzimuthExperiment extends Experiment {
    */
   private boolean enoughPts;
 
+  private boolean downsample = false;
+
   public AzimuthExperiment() {
     super();
     simpleCalc = false;
@@ -91,7 +93,9 @@ public class AzimuthExperiment extends Experiment {
   private String getAzimuthResults() {
 
     String name = "N";
+    // both angle and respective uncertainty need to be represented in degrees
     double angle = getFitAngle();
+    double uncertainty = getUncertainty();
 
     return getAzimuthResultForAngleParameters(name, angle, offset, uncertainty, enoughPts);
   }
@@ -101,6 +105,7 @@ public class AzimuthExperiment extends Experiment {
     String name = "E";
     double angle = (getFitAngle() + 90) % 360;
     // angle reported should be in degrees, so add 90 for east, modulus is 360
+    double uncertainty = getUncertainty();
 
     return getAzimuthResultForAngleParameters(name, angle, offset, uncertainty, enoughPts);
   }
@@ -167,8 +172,13 @@ public class AzimuthExperiment extends Experiment {
       long interval, long start, long end) {
     AzimuthExperiment azimuthExperiment = new AzimuthExperiment();
     azimuthExperiment.setSimple(false); // don't do the faster angle calculation
+    azimuthExperiment.setDownsample(true);
     azimuthExperiment.alternateEntryPoint(north, east, reference, interval, start, end);
     return azimuthExperiment.getFitAngleRad();
+  }
+
+  private void setDownsample(boolean b) {
+    downsample = b;
   }
 
   static double[][] matchArrayLengths(double[]... toTrim) {
@@ -257,12 +267,13 @@ public class AzimuthExperiment extends Experiment {
 
     enoughPts = false;
 
-    // does nothing if the data is already 1Hz sample rate
-    testNorth = decimate(testNorth, interval, ONE_HZ_INTERVAL);
-    testEast = decimate(testEast, interval, ONE_HZ_INTERVAL);
-    refNorth = decimate(refNorth, interval, ONE_HZ_INTERVAL);
-    // update the actual sample rate if data was above 1Hz sampling
-    interval = Math.max(interval, ONE_HZ_INTERVAL);
+    if (downsample) {
+      testNorth = decimate(testNorth, interval, ONE_HZ_INTERVAL);
+      testEast = decimate(testEast, interval, ONE_HZ_INTERVAL);
+      refNorth = decimate(refNorth, interval, ONE_HZ_INTERVAL);
+      // update the actual sample rate if data was above 1Hz sampling
+      interval = Math.max(interval, ONE_HZ_INTERVAL);
+    }
 
     double[] initTestNorth = demean(testNorth);
     double[] initTestEast = demean(testEast);
@@ -272,22 +283,23 @@ public class AzimuthExperiment extends Experiment {
     initTestEast = detrend(initTestEast);
     initRefNorth = detrend(initRefNorth);
 
-    // should there be a normalization step here?
-
     // data will be downsampled to 1 if > 1Hz rate, else will keep sample rate from input
-    double samplesPerSecond = Math.min(1., ONE_HZ_INTERVAL / (double)interval);
+    double samplesPerSecond = ONE_HZ_INTERVAL / (double) interval;
     double low = 1. / 8; // filter from 8 seconds interval
     double high = 1. / 3; // up to 3 seconds interval
+
     // bandpass filters of order 2 in the range specified above
     initTestNorth = bandFilter(initTestNorth, samplesPerSecond, low, high, 2);
     initTestEast = bandFilter(initTestEast, samplesPerSecond, low, high, 2);
     initRefNorth = bandFilter(initRefNorth, samplesPerSecond, low, high, 2);
 
     // enforce length constraint -- all data must be the same length
-    double[][] data = matchArrayLengths(initTestNorth, initTestEast, initRefNorth);
-    initTestNorth = data[0];
-    initTestEast = data[1];
-    initRefNorth = data[2];
+    {
+      double[][] data = matchArrayLengths(initTestNorth, initTestEast, initRefNorth);
+      initTestNorth = data[0];
+      initTestEast = data[1];
+      initRefNorth = data[2];
+    }
 
     MultivariateJacobianFunction jacobian =
         getJacobianFunction(initTestNorth, initTestEast, initRefNorth);
@@ -342,7 +354,7 @@ public class AzimuthExperiment extends Experiment {
     // (improves susceptibility to noise)
     double bestCorr = jacobian.value(angleVector).getFirst().getEntry(0);
     double bestTheta = bestGuessAngle;
-    final long twoThouSecs = 2000L * ONE_HZ_INTERVAL;
+    final long twoThouSecs = 2000L * interval;
     // 1000 ms per second, range length
     final long fiveHundredSecs = twoThouSecs / 4L; // distance between windows
     int numWindows = (int) ((timeRange - twoThouSecs) / fiveHundredSecs);
@@ -365,10 +377,12 @@ public class AzimuthExperiment extends Experiment {
       testEastWin = detrend(testEastWin);
       refNorthWin = detrend(refNorthWin);
 
-      // bandpass filters of order 2 again
-      testNorthWin = bandFilter(testNorthWin, samplesPerSecond, low, high, 2);
-      testEastWin = bandFilter(testEastWin, samplesPerSecond, low, high, 2);
-      refNorthWin = bandFilter(refNorthWin, samplesPerSecond, low, high, 2);
+      if (downsample) {
+        // bandpass filters of order 2 again
+        testNorthWin = bandFilter(testNorthWin, samplesPerSecond, low, high, 2);
+        testEastWin = bandFilter(testEastWin, samplesPerSecond, low, high, 2);
+        refNorthWin = bandFilter(refNorthWin, samplesPerSecond, low, high, 2);
+      }
 
       jacobian =
           getDampedJacobianFunction(testNorthWin, testEastWin, refNorthWin, bestCorr, bestTheta);
@@ -476,7 +490,6 @@ public class AzimuthExperiment extends Experiment {
       findAngleY.evaluate(angleVec);
 
       angle = ((averageAngle % TAU) + TAU) % TAU;
-
     }
 
     fireStateChange("Solver completed! Producing plots...");
@@ -510,13 +523,31 @@ public class AzimuthExperiment extends Experiment {
     plotTimeseries.addSeries(timeMapCorrelation);
 
     for (int i = 0; i < angles.length; ++i) {
-      long xVal = i * 500;
-      double angle = angles[i];
-      angle = (angle % TAU);
+      long xVal = i * fiveHundredSecs;
+      double angle = Math.toDegrees(angles[i]);
+      angle %= 360;
+      // unwrapping
+      if (i > 0) {
+        while (angle > angles[i - 1] + 180) {
+          angle -= 360;
+        }
+        while (angle < angles[i - 1] - 180) {
+          angle += 360;
+        }
+      } else {
+        while (angle > 180) {
+          angle -= 360;
+        }
+        while (angle < -180) {
+          angle += 360;
+        }
+      }
+      // angle = (angle % TAU);
       double correlation = correlations[i];
       timeMapCorrelation.add(xVal, correlation);
-      timeMapAngle.add(xVal, Math.toDegrees(angle));
-      angles[i] = Math.toDegrees(angle);
+      timeMapAngle.add(xVal, angle);
+      // store old angles as degrees (necessary for above unwrapping logic to work)
+      angles[i] = angle;
     }
 
     xySeriesData.add(new XYSeriesCollection(timeMapAngle));
