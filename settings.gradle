@@ -1,3 +1,15 @@
 rootProject.name = 'asl-sensor-suite'
 
 include 'asl-java-utils'
+
+plugins {
+  id "org.sonarqube" version "3.3"
+}
+
+sonarqube {
+  properties {
+    property "sonar.projectKey", "cfcastaneda98_asl-sensor-suite"
+    property "sonar.organization", "cfcastaneda98"
+    property "sonar.host.url", "https://sonarcloud.io"
+  }
+}
