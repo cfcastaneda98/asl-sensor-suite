@@ -6,6 +6,7 @@ plugins {
     id 'idea'
     id 'eclipse'
     id 'application'
+    id "org.sonarqube" version "3.3"
 }
 
 def progTitle = 'ASL Sensor Test Suite'
@@ -171,4 +172,11 @@ task standardBuild(dependsOn: gitSubmodule) {
     finalizedBy {
         build
     }
+}
+sonarqube {
+  properties {
+    property "sonar.projectKey", "cfcastaneda98_asl-sensor-suite"
+    property "sonar.organization", "cfcastaneda98"
+    property "sonar.host.url", "https://sonarcloud.io"
+  }
 }
