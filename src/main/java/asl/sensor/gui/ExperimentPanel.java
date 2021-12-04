@@ -355,7 +355,9 @@ public abstract class ExperimentPanel
     }
 
     // EXTRA THICK
-    if (!(plotTheseInBold.length == 0)) {
+    //Fixed Design Issue: LogicInversion
+    //if (!(plotTheseInBold.length == 0)) {
+    if ((plotTheseInBold.length != 0)) {
       for (String series : plotTheseInBold) {
         int seriesIndex = xyDataset.getSeriesIndex(series);
         if (seriesIndex < 0) {
