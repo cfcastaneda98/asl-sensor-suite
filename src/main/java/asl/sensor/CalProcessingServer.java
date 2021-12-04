@@ -198,10 +198,12 @@ public class CalProcessingServer {
         north1RespEmbedded, east1RespEmbedded, vert1RespEmbedded,
         north2RespEmbedded, east2RespEmbedded, vert2RespEmbedded};
 
-    DataStore ds = new DataStore();
+    //Code style issue fixed: ShortVariable 
+    //DataStore ds = new DataStore();
+    DataStore dataStore = new DataStore();
     for (int i = 0; i < seedFileNames.length; ++i) {
       DataBlock db = getFirstTimeSeries(seedFileNames[i]);
-      ds.setBlock(i, db);
+      dataStore.setBlock(i, db);
       ChannelMetadata ir;
       if (embedResps[i]) {
         ir = loadEmbeddedResponse(respFileNames[i]);
@@ -210,11 +212,11 @@ public class CalProcessingServer {
         long filePointer = getRespFileClosestEpoch(respName, start, end).filePointer;
         ir = parseResponse(respName, filePointer);
       }
-      ds.setResponse(i, ir);
+      dataStore.setResponse(i, ir);
     }
-    ds.trim(start, end);
+    dataStore.trim(start, end);
 
-    return runExpGetDataGain(ds, useFirstDataAsAngleRef, useFirstDataAsGainRef);
+    return runExpGetDataGain(dataStore, useFirstDataAsAngleRef, useFirstDataAsGainRef);
   }
 
   /**
